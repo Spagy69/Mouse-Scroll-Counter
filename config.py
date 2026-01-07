@@ -20,7 +20,10 @@ DEFAULT_CONFIG = {
     "reset_key": "r",
     "monitor_index": 0,
     "font_name": "Ubuntu",
-    "font_path": "fonts/Ubuntu/Ubuntu-Bold.ttf"
+    "font_path": "fonts/Ubuntu/Ubuntu-Bold.ttf",
+    "offset_x": 0,
+    "offset_y": 0,
+    "scale": 1.0
 }
 
 def load_config():

@@ -41,7 +41,9 @@ class Overlay:
         self.root.geometry("200x150")
         
         # Position logic
-        self.update_position()
+        # Position logic
+        # Defer position update until labels are created so we can update font size too
+        pass
         
         # Always on top
         self.root.attributes("-topmost", True)
@@ -72,6 +74,10 @@ class Overlay:
         # Click-through (Windows only)
         self.make_click_through()
         
+        
+        # Initial Transform application (Position + Scale + Font)
+        self.apply_transform()
+
         # Start Polling
         self.poll()
 
@@ -86,33 +92,49 @@ class Overlay:
                  except Exception as e:
                      print(f"Failed to load font: {e}")
 
-    def update_position(self):
+    def apply_transform(self):
         monitors = get_monitors()
         monitor_index = self.config.get("monitor_index", 0)
+        scale = self.config.get("scale", 1.0)
+        offset_x = self.config.get("offset_x", 0)
+        offset_y = self.config.get("offset_y", 0)
         
-        # Overlay dimensions
-        w = 200
-        h = 150
+        # Base dimensions
+        base_w = 200
+        base_h = 150
+        base_font_size = 24
         
+        # Scaled dimensions
+        w = int(base_w * scale)
+        h = int(base_h * scale)
+        font_size = int(base_font_size * scale)
+        
+        # Update Font
+        font_name = self.config.get("font_name", "Segoe UI")
+        new_font = (font_name, font_size, "bold")
+        self.up_label.config(font=new_font)
+        self.down_label.config(font=new_font)
+        
+        # Calculate Position
         if 0 <= monitor_index < len(monitors):
             m = monitors[monitor_index]
             # Calculate 5% margin
             margin_right = int(m["width"] * 0.05)
             margin_top = int(m["height"] * 0.05)
             
-            # Position top-right with margin
-            x_pos = m["right"] - w - margin_right
-            y_pos = m["top"] + margin_top
+            # Position top-right with margin + offsets
+            x_pos = m["right"] - w - margin_right + offset_x
+            y_pos = m["top"] + margin_top + offset_y
         else:
-            # Fallback to primary/default tk behavior if index invalid
+            # Fallback
             screen_width = self.root.winfo_screenwidth()
             screen_height = self.root.winfo_screenheight()
             
             margin_right = int(screen_width * 0.05)
             margin_top = int(screen_height * 0.05)
             
-            x_pos = screen_width - w - margin_right
-            y_pos = margin_top
+            x_pos = screen_width - w - margin_right + offset_x
+            y_pos = margin_top + offset_y
             
         self.root.geometry(f"{w}x{h}+{int(x_pos)}+{int(y_pos)}")
 
@@ -184,43 +206,95 @@ class Overlay:
         y = (hs/2) - (125)
         top.geometry(f"300x250+{int(x)}+{int(y)}")
 
-        # Reset Key Section
-        lbl_reset = tk.Label(top, text="Click below then press key to set Reset Key:")
-        lbl_reset.pack(pady=(10, 5))
-        
-        btn_reset = tk.Button(top, text=f"Current: {self.input_handler.reset_key}")
-        btn_reset.pack(pady=5)
-        
-        # Monitor Section
-        lbl_monitor = tk.Label(top, text="Monitor Index:")
-        lbl_monitor.pack(pady=(10, 5))
+        # Window Icon
+        try:
+            icon_path = get_resource_path(os.path.join("icons", "mouse.png"))
+            if os.path.exists(icon_path):
+                # Set icon for the title bar
+                top.iconphoto(False, tk.PhotoImage(file=icon_path))
+        except Exception:
+            pass
+
+        # === Monitor Selection ===
+        lbl_monitor = tk.Label(top, text="Monitor:")
+        lbl_monitor.pack(pady=(5, 0))
         
         monitors = get_monitors()
         monitor_options = [f"Monitor {i}" for i in range(len(monitors))]
         if not monitor_options:
             monitor_options = ["Monitor 0"]
-            
         current_monitor = self.config.get("monitor_index", 0)
         if current_monitor >= len(monitor_options):
             current_monitor = 0
-            
         combo_monitor = ttk.Combobox(top, values=monitor_options, state="readonly")
         combo_monitor.current(current_monitor)
-        combo_monitor.pack(pady=5)
+        combo_monitor.pack(pady=2)
 
+        def on_monitor_change(event):
+            self.config["monitor_index"] = combo_monitor.current()
+            self.apply_transform()
+        combo_monitor.bind("<<ComboboxSelected>>", on_monitor_change)
+
+        # === Scale Slider ===
+        lbl_scale = tk.Label(top, text="Scale (100% - 500%):")
+        lbl_scale.pack(pady=(10, 0))
+        
+        current_scale_val = int(self.config.get("scale", 1.0) * 100)
+        scale_var = tk.IntVar(value=current_scale_val)
+        
+        def on_scale_change(val):
+            new_scale = float(val) / 100.0
+            self.config["scale"] = new_scale
+            self.apply_transform()
+            
+        scl = tk.Scale(top, from_=100, to=500, orient=tk.HORIZONTAL, variable=scale_var, command=on_scale_change)
+        scl.pack(fill="x", padx=20)
+
+        # === Position Adjustment ===
+        lbl_pos = tk.Label(top, text="Position Adjustment:")
+        lbl_pos.pack(pady=(10, 2))
+        
+        pos_frame = tk.Frame(top)
+        pos_frame.pack()
+        
+        def move(dx, dy):
+            self.config["offset_x"] = self.config.get("offset_x", 0) + dx
+            self.config["offset_y"] = self.config.get("offset_y", 0) + dy
+            # Invert dy? No, screen coords: +y is down.
+            self.apply_transform()
+
+        btn_up = tk.Button(pos_frame, text="▲", width=3, command=lambda: move(0, -10))
+        btn_up.grid(row=0, column=1)
+        
+        btn_left = tk.Button(pos_frame, text="◄", width=3, command=lambda: move(-10, 0))
+        btn_left.grid(row=1, column=0)
+        
+        btn_down = tk.Button(pos_frame, text="▼", width=3, command=lambda: move(0, 10))
+        btn_down.grid(row=1, column=1)
+        
+        btn_right = tk.Button(pos_frame, text="►", width=3, command=lambda: move(10, 0))
+        btn_right.grid(row=1, column=2)
+
+        # === Reset Key ===
+        lbl_reset = tk.Label(top, text="Reset Key:")
+        lbl_reset.pack(pady=(10, 0))
+        
+        btn_reset = tk.Button(top, text=f"Key: {self.input_handler.reset_key}")
+        btn_reset.pack(pady=2)
+
+        # === Save Button ===
         def save_settings():
-             # Save Monitor
-             selected_idx = combo_monitor.current()
-             cfg = load_config()
-             cfg["monitor_index"] = selected_idx
-             save_config(cfg)
-             self.config = cfg # Update local config
-             self.update_position() # Apply position change immediately
+             # Settings are already updated in self.config by live controls
+             # Just need to write to disk
+             save_config(self.config)
              messagebox.showinfo("Saved", "Settings saved!", parent=top)
              top.destroy()
+        
+        btn_save = tk.Button(top, text="Save & Close", command=save_settings, bg="#dddddd")
+        btn_save.pack(side="bottom", pady=10, fill="x", padx=10)
 
-        btn_save = tk.Button(top, text="Save & Close", command=save_settings)
-        btn_save.pack(side="bottom", pady=10)
+        # Resize window to fit new content
+        top.geometry("300x450")
 
         # Logic for Key Capture
         self.capturing = False
@@ -240,13 +314,10 @@ class Overlay:
             if len(event.char) > 0 and ord(event.char) > 31:
                 new_key = event.char
             
-            cfg = load_config()
-            cfg["reset_key"] = new_key
-            save_config(cfg)
-            self.config = cfg # Update local config
-            self.input_handler.update_config()
+            self.config["reset_key"] = new_key
+            self.input_handler.reset_key = new_key 
             
-            btn_reset.config(text=f"Current: {new_key}")
+            btn_reset.config(text=f"Key: {new_key}")
             
         top.bind("<Key>", on_key)
 
