@@ -14,11 +14,12 @@ A transparent, click-through overlay that counts your mouse scroll wheel actions
   - **Multi-Monitor**: Select exactly which monitor displays the overlay.
 - **System Tray Integration**: Minimized to the tray with a custom mouse icon.
 
-## Quick Start (Pre-built)
+## Quick Start
 
-1. Navigate to the `dist` folder.
-2. Double-click `MouseScrollCounter.exe`.
-3. The overlay will appear, and a Mouse icon will be added to your system tray.
+1. Go to the **Releases** section of this repository.
+2. Download the latest `MouseScrollCounter.exe`.
+3. Run the executable.
+4. The overlay will appear, and a Mouse icon will be added to your system tray.
 
 ## How to Use
 
