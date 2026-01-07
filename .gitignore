@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / Packaging
+dist/
+build/
+*.spec
+
+# User Configuration
+config.json
+
+# IDEs
+.vscode/
+.idea/
+
+# Environment
+.env
+venv/
+env/
