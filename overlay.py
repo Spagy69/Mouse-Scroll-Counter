@@ -134,6 +134,23 @@ class Overlay:
         # Update counts
         u, d = self.input_handler.get_counts()
         self.update_counts(u, d)
+
+        # Force Topmost (Aggressive)
+        if platform.system() == "Windows":
+            try:
+                # HWND_TOPMOST = -1
+                # SWP_NOSIZE = 0x0001
+                # SWP_NOMOVE = 0x0002
+                # SWP_NOACTIVATE = 0x0010
+                # SWP_SHOWWINDOW = 0x0040
+                hwnd = self.root.winfo_id()
+                ctypes.windll.user32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010 | 0x0040)
+            except Exception:
+                pass
+        
+        # Standard fallback
+        self.root.lift()
+        self.root.attributes("-topmost", True)
         
         # Check queue
         try:
