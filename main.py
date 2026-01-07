@@ -9,16 +9,23 @@ import queue
 # Import from modified overlay
 from overlay import start_overlay
 from input_handler import InputHandler
+from config import get_resource_path
 
 def create_image():
-    width = 64
-    height = 64
-    color = "green"
-    image = Image.new('RGB', (width, height), color)
-    dc = ImageDraw.Draw(image)
-    dc.rectangle((width // 2, 0, width, height // 2), fill="blue")
-    dc.rectangle((0, height // 2, width // 2, height), fill="blue")
-    return image
+    # Use helper for resource path
+    icon_path = get_resource_path(os.path.join("icons", "mouse.png"))
+    if os.path.exists(icon_path):
+        return Image.open(icon_path)
+    else:
+        # Fallback if icon not found
+        width = 64
+        height = 64
+        color = "green"
+        image = Image.new('RGB', (width, height), color)
+        dc = ImageDraw.Draw(image)
+        dc.rectangle((width // 2, 0, width, height // 2), fill="blue")
+        dc.rectangle((0, height // 2, width // 2, height), fill="blue")
+        return image
 
 def run_tray(cmd_queue, stop_event):
     def on_settings(icon, item):
@@ -34,7 +41,7 @@ def run_tray(cmd_queue, stop_event):
 
     menu = pystray.Menu(
         pystray.MenuItem("Help", on_help),
-        pystray.MenuItem("Change Reset Key", on_settings),
+        pystray.MenuItem("Settings", on_settings),
         pystray.MenuItem("Exit", on_exit)
     )
     
